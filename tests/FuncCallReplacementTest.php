@@ -15,11 +15,11 @@ class FuncCallReplacementTest extends ProteusTestCase
      * default ignoreFunctions=true, since the caller is making an explicit
      * replacement (not a bulk update where function preservation makes sense).
      */
-    public function testReplacingExistingFuncCallWithDifferentFuncCall(): void
+    public function test_replacing_existing_func_call_with_different_func_call(): void
     {
-        $f = new FunctionWriter();
+        $f = new FunctionWriter;
 
-        $updater = new ConfigUpdater(); // ignoreFunctions=true by default
+        $updater = new ConfigUpdater; // ignoreFunctions=true by default
         $updater->open(__DIR__.'/configs/funcall_replacement.php');
         $updater->update(['path' => $f->basePath('content/revisions')]);
 
@@ -36,7 +36,30 @@ class FuncCallReplacementTest extends ProteusTestCase
      * ConfigWriter::ignoreFunctionCalls(false) actually takes effect when
      * going through the edit()->set()->save() path.
      */
-    public function testGetUpdaterPassesIgnoreFunctionsToConfigUpdater(): void
+    /**
+     * Confirms that issue #29 is NOT closed by PR #39.
+     *
+     * With ignoreFunctions=true (default, used by writeMany), plain values cannot replace
+     * existing FuncCall values — the FuncCall is preserved. Closing issue #29 would require
+     * a dedicated API change (e.g. using replace() instead of update()).
+     */
+    public function test_issue29_func_call_values_are_still_preserved_when_passing_plain_values(): void
+    {
+        $updater = new ConfigUpdater; // ignoreFunctions=true by default — same path as writeMany
+        $updater->open(__DIR__.'/configs/issue29.php');
+        $updater->update([
+            'enabled' => true,
+            'route' => 'my-cp',
+            'start_page' => 'collections/pages',
+        ]);
+
+        $expected = Transformer::normalizeLineEndings(
+            file_get_contents(__DIR__.'/expected/issue29.php')
+        );
+        $this->assertEquals($expected, $updater->getDocument());
+    }
+
+    public function test_get_updater_passes_ignore_functions_to_config_updater(): void
     {
         // Copy the fixture before constructing LaravelConfigWriter — it scans configPath() on construction.
         $configPath = $this->app->configPath();
